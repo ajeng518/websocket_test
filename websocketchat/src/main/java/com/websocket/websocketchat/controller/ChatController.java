@@ -5,6 +5,7 @@ import com.websocket.websocketchat.model.ChatRoom;
 //import com.websocket.websocketchat.service.ChatService;
 import com.websocket.websocketchat.pubsub.RedisPublisher;
 import com.websocket.websocketchat.repo.ChatRoomRepository;
+import com.websocket.websocketchat.service.ChatService;
 import com.websocket.websocketchat.service.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,28 +25,44 @@ import java.util.List;
 @Slf4j
 public class ChatController {
     private final SimpMessageSendingOperations messagingTemplate;
-//    private final RedisPublisher redisPublisher;
-    private final ChannelTopic channelTopic;
-    private final JwtTokenProvider jwtTokenProvider;
-    private final RedisTemplate<String, Object> redisTemplate;
 
-    @MessageMapping("/chat/message") // websocket으로 들어오는 메세지 발행을 처리한다.
+    private final JwtTokenProvider jwtTokenProvider;
+    private final ChatRoomRepository chatRoomRepository;
+    private final ChatService chatService;
+
+    private final ChannelTopic channelTopic;
+
+    /**
+     * websocket "/pub/chat/message"로 들어오는 메시징을 처리한다.
+     */
+    @MessageMapping("/chat/message")
     public void message(ChatMessage message, @Header("token") String token) {
         String nickname = jwtTokenProvider.getUserNameFromJwt(token);
         // 로그인 회원 정보로 대화명 설정
         message.setSender(nickname);
-
-        log.info("발신 message : {}", message);
-
-        // 채팅방 입장시에는 대화명과 메시지를 자동으로 세팅한다.
-        if (ChatMessage.MessageType.ENTER.equals(message.getType())) {
-            message.setSender("[알림]");
-//            chatRoomRepository.enterChatRoom(message.getRoomId());
-            message.setMessage(nickname + "님이 입장하셨습니다.");
-        }
-        // WebSocket에 발행된 메세지를 redis로 발행(publish)
-        redisTemplate.convertAndSend(channelTopic.getTopic(), message);
+        // 채팅방 인원수 세팅
+        message.setUserCount(chatRoomRepository.getUserCount(message.getRoomId()));
+        // Websocket에 발행된 메시지를 redis로 발행(publish)
+        chatService.sendChatMessage(message);
     }
+
+//    @MessageMapping("/chat/message") // websocket으로 들어오는 메세지 발행을 처리한다.
+//    public void message(ChatMessage message, @Header("token") String token) {
+//        String nickname = jwtTokenProvider.getUserNameFromJwt(token);
+//        // 로그인 회원 정보로 대화명 설정
+//        message.setSender(nickname);
+//
+//        log.info("발신 message : {}", message);
+//
+//        // 채팅방 입장시에는 대화명과 메시지를 자동으로 세팅한다.
+//        if (ChatMessage.MessageType.ENTER.equals(message.getType())) {
+//            message.setSender("[알림]");
+////            chatRoomRepository.enterChatRoom(message.getRoomId());
+//            message.setMessage(nickname + "님이 입장하셨습니다.");
+//        }
+//        // WebSocket에 발행된 메세지를 redis로 발행(publish)
+//        redisTemplate.convertAndSend(channelTopic.getTopic(), message);
+//    }
 
 //
 //    @MessageMapping("/chat/message")

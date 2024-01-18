@@ -14,6 +14,7 @@ import org.springframework.web.socket.config.annotation.*;
 @Configuration
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer  {
+
     private final StompHandler stompHandler;
     @Override
     public void configureClientInboundChannel(ChannelRegistration registration) {
